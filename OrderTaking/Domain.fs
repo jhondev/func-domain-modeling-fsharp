@@ -38,7 +38,7 @@ module Domain =
     type OrderLineId = Undefined
     type CustomerId = Undefined
 
-    type CustomerInfo = Undefined
+    
     type ShippingAddress = Undefined
     type BillingAddress = Undefined
     type Price = Undefined
@@ -74,8 +74,52 @@ module Domain =
     //     -> UnvalidatedOrder     // input​
     //     -> AsyncResult<ValidatedOrder,ValidationError list>  // output​
     type String50 = private String50 of string
+    module String50 =
+
+        /// Return the value inside a String50
+        let value (String50 str) = str
+
+        /// Create an String50 from a string
+        /// Return Error if input is null, empty, or length > 50
+        let create fieldName str = 
+            // ConstrainedType.createString fieldName String50 50 str
+            str
+
+        /// Create an String50 from a string
+        /// Return None if input is null, empty. 
+        /// Return error if length > maxLen
+        /// Return Some if the input is valid
+        let createOption fieldName str = 
+            // ConstrainedType.createStringOption fieldName String50 50 str
+            str
+
     type ZipCode = private ZipCode of string
     type EmailAddress = private EmailAddress of string
+    module EmailAddress =
+
+        /// Return the string value inside an EmailAddress 
+        let value (EmailAddress str) = str
+
+        /// Create an EmailAddress from a string
+        /// Return Error if input is null, empty, or doesn't have an "@" in it
+        let create fieldName str = 
+            // let pattern = ".+@.+" // anything separated by an "@"
+            // ConstrainedType.createLike fieldName EmailAddress pattern str
+            str
+
+    type UnvalidatedCustomerInfo = {
+    FirstName : string
+    LastName : string
+    EmailAddress : string
+    }
+    type PersonalName = {
+        FirstName : String50
+        LastName : String50
+    }
+    type CustomerInfo = {
+    Name : PersonalName 
+    EmailAddress : EmailAddress 
+    }
     type Address = {
     AddressLine1 : String50
     AddressLine2 : String50 option
@@ -121,6 +165,10 @@ module Domain =
         let firstName = customer.FirstName |> String50.create
         let lastName = customer.LastName |> String50.create
         let emailAddress = customer.EmailAddress |> EmailAddress.create
+        let name : PersonalName = {
+            FirstName = firstName
+            LastName = lastName
+        }
         let customerInfo : CustomerInfo = {
             Name = name
             EmailAddress = emailAddress
