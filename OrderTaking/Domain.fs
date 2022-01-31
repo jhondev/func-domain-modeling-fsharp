@@ -2,6 +2,9 @@ namespace OrderTaking.Domain
 
 open System
 
+// TODO: Go deep in CE
+// TODO: Go deep in Active Patterns
+
 module Domain =
     // Value Objects
     type WidgetCode = WidgetCode of string // W = 4 digits
