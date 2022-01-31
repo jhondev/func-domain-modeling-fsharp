@@ -14,12 +14,54 @@ module Domain =
         | Widget of WidgetCode
         | Gizmo of GizmoCode
 
+    module ProductCode =
+
+        /// Return the string value inside a ProductCode
+        let value productCode =
+            match productCode with
+            | Widget (WidgetCode wc) -> wc
+            | Gizmo (GizmoCode gc) -> gc
+
+        /// Create an ProductCode from a string
+        /// Return Error if input is null, empty, or not matching pattern
+        let create (code: string) =
+            // if String.IsNullOrEmpty(code) then
+            //     let msg =
+            //         sprintf "%s: Must not be null or empty" fieldName
+
+            //     Error msg
+            if code.StartsWith("W") then
+                WidgetCode code |> Widget
+            else //code.StartsWith("G") then
+                GizmoCode code |> Gizmo
+    // else
+    //     let msg =
+    //         sprintf "%s: Format not recognized '%s'" fieldName code
+
+    //     Error msg
+
+
     type UnitQuantity = UnitQuantity of int
     type KilogramQuantity = KilogramQuantity of decimal
 
     type OrderQuantity =
         | Unit of UnitQuantity
         | Kilos of KilogramQuantity
+
+    module OrderQuantity =
+
+        /// Return the value inside a OrderQuantity
+        let value qty =
+            match qty with
+            | Unit (UnitQuantity uq) -> uq |> decimal
+            | Kilos (KilogramQuantity kq) -> kq
+
+        /// Create a OrderQuantity from a productCode and quantity
+        let create productCode quantity =
+            match productCode with
+            | Widget _ -> UnitQuantity(int quantity) |> Unit
+            | Gizmo _ -> KilogramQuantity quantity |> Kilos
+
 
     // Entities
     type OrderId = private OrderId of string
@@ -38,7 +80,11 @@ module Domain =
 
         let value (OrderId str) = str
 
-    type OrderLineId = Undefined
+    type OrderLineId = private OrderLineId of string
+
+    module OrderLineId =
+        let create str = OrderLineId str
+
     type CustomerId = Undefined
 
 
@@ -153,11 +199,17 @@ module Domain =
         | InvalidFormat
         | AddressNotFound
 
+    type ValidatedOrderLine =
+        { OrderLineId: OrderLineId
+          ProductCode: ProductCode
+          Quantity: OrderQuantity }
+
     type ValidatedOrder =
         { OrderId: OrderId
           CustomerInfo: CustomerInfo
           ShippingAddress: Address
-          BillingAddress: Address }
+          BillingAddress: Address
+          Lines: ValidatedOrderLine list }
 
     type CheckProductCodeExists = ProductCode -> bool
 
@@ -222,6 +274,38 @@ module Domain =
 
         address
 
+    let toProductCode (checkProductCodeExists: CheckProductCodeExists) productCode =
+
+        // create a ProductCode -> ProductCode function
+        // suitable for using in a pipeline
+        // let checkProduct productCode =
+        // sprintf "Invalid: %A" productCode
+
+        // assemble the pipeline
+        // productCode |> ProductCode.create |> checkProduct
+        ProductCode.create productCode
+
+    /// Helper function for validateOrder
+    let toValidatedOrderLine checkProductExists (unvalidatedOrderLine: UnvalidatedOrderLine) =
+        let orderLineId =
+            unvalidatedOrderLine.OrderLineId
+            |> OrderLineId.create
+
+        let productCode =
+            unvalidatedOrderLine.ProductCode
+            |> toProductCode checkProductExists
+
+        let quantity =
+            unvalidatedOrderLine.Quantity
+            |> OrderQuantity.create productCode
+
+        let validatedOrderLine =
+            { OrderLineId = orderLineId
+              ProductCode = productCode
+              Quantity = quantity }
+
+        validatedOrderLine
+
     let validateOrder: ValidateOrder =
         fun checkProductCodeExists checkAddressExists unvalidatedOrder ->
             let orderId =
@@ -237,15 +321,16 @@ module Domain =
             let billingAddress =
                 unvalidatedOrder.BillingAddress
                 |> toAddress checkAddressExists
-            // let lines =
-            //     unvalidatedOrder.Lines
-            //     |> List.map (toValidatedOrderLine checkProductCodeExists)
+
+            let lines =
+                unvalidatedOrder.Lines
+                |> List.map (toValidatedOrderLine checkProductCodeExists)
+
             let validatedOrder: ValidatedOrder =
                 { OrderId = orderId
                   CustomerInfo = customerInfo
                   ShippingAddress = shippingAddress
                   BillingAddress = billingAddress
-                //Lines = lines
-                }
+                  Lines = lines }
 
             validatedOrder
